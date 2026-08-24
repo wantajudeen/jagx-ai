@@ -2,19 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const Color background = Color(0xFF0A0A0B);
-  static const Color surface = Color(0xFF121214);
-  static const Color surfaceElevated = Color(0xFF1A1A1D);
-  static const Color border = Color(0xFF2A2A2E);
+  // Deep black base
+  static const Color background = Color(0xFF050506);
+  static const Color surface = Color(0xFF0E0E10);
+  static const Color surfaceElevated = Color(0xFF16161A);
+  static const Color border = Color(0xFF232328);
 
+  // Brand
   static const Color primary = Color(0xFF00D4AA); // JagX teal
   static const Color primaryDim = Color(0xFF00B894);
-  static const Color accent = Color(0xFFF59E0B); // warm orange CTA
+  static const Color accent = Color(0xFFF59E0B);
 
-  static const Color textPrimary = Color(0xFFF5F5F5);
+  // Text
+  static const Color textPrimary = Color(0xFFF4F4F5);
   static const Color textSecondary = Color(0xFFA1A1AA);
   static const Color textTertiary = Color(0xFF71717A);
 
+  // Status
   static const Color success = Color(0xFF22C55E);
   static const Color error = Color(0xFFEF4444);
   static const Color warning = Color(0xFFF59E0B);
@@ -43,6 +47,7 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         iconTheme: IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: TextStyle(
@@ -50,6 +55,9 @@ class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
+      ),
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: AppColors.surface,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -72,6 +80,7 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.error),
         ),
         hintStyle: const TextStyle(color: AppColors.textTertiary),
+        labelStyle: const TextStyle(color: AppColors.textSecondary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -96,6 +105,12 @@ class AppTheme {
       dividerTheme: const DividerThemeData(
         color: AppColors.border,
         thickness: 1,
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.surfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }

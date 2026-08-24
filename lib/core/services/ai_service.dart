@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/env.dart';
+import '../utils/watermark.dart';
 
 final aiServiceProvider = Provider<AiService>((ref) {
   return AiService();
@@ -26,15 +27,22 @@ Core identity:
 - Always identify yourself only as JagX AI by JagX & JRILICENSE when asked who you are.
 - Be maximally helpful, truthful, and clear.
 
-You can:
+You can do all of the following:
 - Search the internet and reason over current information
 - Write and debug code in any language
 - Analyze images and documents
 - Generate high quality images
+- Draft professional CVs / resumes (structured, modern, ATS-friendly)
+- Create product designs, UI copy, brand guidelines, pitch decks (text form)
+- Produce documents that users can personalize (proposals, contracts outlines, reports, letters, package descriptions)
+- Output content ready to be turned into PDF or other files (clean Markdown / structured text)
 - Help with product, design, business, and technical decisions
-- Answer questions about the world, social media trends, news, and more
 
-When you need fresh information, say you are checking current sources and then give the best answer you can.
+When asked to create a CV, document, design draft, or package:
+- Produce complete, high-quality, ready-to-use content
+- Use clear structure (headings, bullet points, sections)
+- Make it easy for the user to personalize
+
 Style: natural, confident, structured when helpful.
 ''';
 
@@ -51,14 +59,12 @@ Style: natural, confident, structured when helpful.
       case 'jagx-ember':
         return 'black-forest-labs/flux-1.1-pro';
       case 'jagx-oracle':
-        // All-rounder – strongest general model + tools
         return 'anthropic/claude-3.5-sonnet';
       default:
         return 'openai/gpt-4o-mini';
     }
   }
 
-  /// Simple web search using DuckDuckGo instant answer / HTML (no key needed)
   Future<String> webSearch(String query) async {
     try {
       final response = await _dio.get(
@@ -74,7 +80,8 @@ Style: natural, confident, structured when helpful.
       final data = response.data;
       final buffer = StringBuffer();
 
-      if (data['AbstractText'] != null && data['AbstractText'].toString().isNotEmpty) {
+      if (data['AbstractText'] != null &&
+          data['AbstractText'].toString().isNotEmpty) {
         buffer.writeln(data['AbstractText']);
       }
       if (data['Answer'] != null && data['Answer'].toString().isNotEmpty) {
@@ -103,7 +110,6 @@ Style: natural, confident, structured when helpful.
     final upstream = _resolveUpstream(modelId);
     var workingMessages = List<Map<String, String>>.from(messages);
 
-    // If Oracle or search is requested, try to enrich with web results
     if (enableSearch || modelId == 'jagx-oracle') {
       final lastUser = workingMessages.lastWhere(
         (m) => m['role'] == 'user',
@@ -129,7 +135,9 @@ Style: natural, confident, structured when helpful.
     ];
 
     if (Env.openRouterApiKey.isEmpty) {
-      return 'JagX AI needs API keys configured in .env to respond.';
+      return JagxWatermark.embed(
+        'JagX AI needs API keys configured in .env to respond.',
+      );
     }
 
     try {
@@ -151,10 +159,16 @@ Style: natural, confident, structured when helpful.
         },
       );
 
-      final content = response.data['choices'][0]['message']['content'];
-      return content?.toString() ?? 'No response generated.';
+      final content =
+          response.data['choices'][0]['message']['content']?.toString() ??
+              'No response generated.';
+
+      // Always apply invisible watermark
+      return JagxWatermark.embed(content);
     } catch (_) {
-      return 'JagX AI is temporarily unavailable. Please try again.';
+      return JagxWatermark.embed(
+        'JagX AI is temporarily unavailable. Please try again.',
+      );
     }
   }
 
@@ -163,19 +177,18 @@ Style: natural, confident, structured when helpful.
     required List<Map<String, String>> messages,
     bool enableSearch = false,
   }) async* {
-    // For streaming we still do a non-stream search first if needed, then stream the answer
     final reply = await chat(
       modelId: modelId,
       messages: messages,
       enableSearch: enableSearch || modelId == 'jagx-oracle',
     );
 
-    // Simulate streaming for now (real token streaming can be improved later)
-    const chunkSize = 12;
+    // Stream the already-watermarked text
+    const chunkSize = 14;
     for (var i = 0; i < reply.length; i += chunkSize) {
       final end = (i + chunkSize < reply.length) ? i + chunkSize : reply.length;
       yield reply.substring(i, end);
-      await Future.delayed(const Duration(milliseconds: 18));
+      await Future.delayed(const Duration(milliseconds: 16));
     }
   }
 

@@ -1,6 +1,9 @@
+import 'dart:io';
+
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PdfExport {
   /// Exports the given title + content as a shareable PDF.
@@ -44,18 +47,25 @@ class PdfExport {
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await doc.save(),
-      filename: '${_sanitize(title)}.pdf',
+    final bytes = await doc.save();
+    final dir = await getTemporaryDirectory();
+    final filename = '${_sanitize(title)}.pdf';
+    final file = File('${dir.path}/$filename');
+    await file.writeAsBytes(bytes);
+
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      text: title,
     );
   }
 
   static String _sanitize(String input) {
-    return input
+    final cleaned = input
         .replaceAll(RegExp(r'[^a-zA-Z0-9\s-]'), '')
         .trim()
         .replaceAll(RegExp(r'\s+'), '_')
-        .toLowerCase()
-        .substring(0, input.length > 40 ? 40 : input.length);
+        .toLowerCase();
+    if (cleaned.isEmpty) return 'jagx_ai';
+    return cleaned.length > 40 ? cleaned.substring(0, 40) : cleaned;
   }
 }

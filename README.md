@@ -2,27 +2,34 @@
 
 Native Android & iOS intelligence console built by **JagX & JRILICENSE**.
 
-Fast, dark-first experience with email OTP auth, real chat, model selector, and image generation. Frontend only shows **JagX models**.
+A capable, dark-first AI app with email OTP auth, real multi-model chat, image generation, and strong system identity. Frontend only ever shows **JagX models**.
+
+## What it can do
+
+- Deep reasoning and clear explanations
+- Code writing & debugging (any language)
+- Image generation
+- Vision-capable model available
+- Product, design, and technical help
+- Natural multi-turn conversation
+
+All while presenting only JagX-branded models to the user.
 
 ## Current Status
 
-- [x] Project scaffold + architecture
-- [x] Dark JagX design system (teal accents)
-- [x] Supabase Auth (email + 6-digit OTP → set password)
-- [x] Splash + full auth flow
-- [x] Chat UI with message bubbles
-- [x] JagX model selector (Core, Pro, Code, Vision, Image)
-- [x] Silent model routing (OpenRouter / others hidden from user)
-- [x] Image generation support
+- [x] Full project scaffold + clean architecture
+- [x] Dark JagX design system
+- [x] Supabase email + 6-digit OTP → set password
+- [x] Session-aware routing
+- [x] Real chat with message history in session
+- [x] Model selector (Core / Pro / Code / Vision / Image)
+- [x] Silent upstream routing (OpenRouter etc. hidden)
+- [x] Strong system prompt (identity locked to JagX AI)
+- [x] Image generation
+- [x] Suggested prompts on empty state
 - [ ] Streaming responses
-- [ ] Conversation history persistence
+- [ ] Persistent chat history (Supabase)
 - [ ] Google / Apple Sign-In (Coming Soon)
-
-## Stack
-
-- Flutter + Riverpod + go_router
-- Supabase Auth
-- Feature-first architecture
 
 ## Getting Started
 
@@ -30,28 +37,20 @@ Fast, dark-first experience with email OTP auth, real chat, model selector, and 
 git clone https://github.com/wantajudeen/jagx-ai.git
 cd jagx-ai
 cp .env.example .env
-# Fill SUPABASE_ANON_KEY + API keys
+# Add your SUPABASE_ANON_KEY + OPENROUTER_API_KEY (and others)
 flutter pub get
 flutter run
 ```
 
-## Auth Flow
+## Models shown to users
 
-1. Enter email
-2. Receive 6-digit code
-3. Verify code
-4. Set password
-5. Land in chat
-
-## Models (shown to users)
-
-- JagX Core
-- JagX Pro
-- JagX Code
-- JagX Vision
-- JagX Image
-
-Internal routing is completely hidden.
+| Name         | Purpose                        |
+|--------------|--------------------------------|
+| JagX Core    | Fast general intelligence      |
+| JagX Pro     | Deep reasoning                 |
+| JagX Code    | Code & technical work          |
+| JagX Vision  | Images & documents            |
+| JagX Image   | Image generation               |
 
 ## Brand
 

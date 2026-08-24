@@ -25,16 +25,16 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     super.dispose();
   }
 
-  void _send() {
-    final text = _controller.text;
+  void _send([String? overrideText]) {
+    final text = overrideText ?? _controller.text;
     if (text.trim().isEmpty) return;
     ref.read(chatProvider.notifier).sendMessage(text);
     _controller.clear();
-    Future.delayed(const Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 120), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent + 80,
-          duration: const Duration(milliseconds: 250),
+          _scrollController.position.maxScrollExtent + 100,
+          duration: const Duration(milliseconds: 280),
           curve: Curves.easeOut,
         );
       }
@@ -122,7 +122,7 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
         children: [
           Expanded(
             child: chat.messages.isEmpty
-                ? _EmptyState()
+                ? _EmptyState(onSuggestionTap: _send)
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -138,7 +138,7 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
           ),
           if (chat.error != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
                 chat.error!,
                 style: const TextStyle(color: AppColors.error, fontSize: 13),
@@ -174,7 +174,7 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed: chat.isLoading ? null : _send,
+                      onPressed: chat.isLoading ? null : () => _send(),
                       icon: Icon(
                         Icons.arrow_upward_rounded,
                         color: chat.isLoading
@@ -194,34 +194,68 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
 }
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onSuggestionTap});
+
+  final void Function(String) onSuggestionTap;
+
+  static const _suggestions = [
+    'Explain quantum computing simply',
+    'Write a clean Flutter Riverpod example',
+    'Generate image: futuristic Lagos skyline at night',
+    'Help me design a product roadmap',
+    'Debug this error: setState() called after dispose',
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Ask JagX AI anything.',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          Text(
+            'Ask JagX AI anything.',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Chat, code, vision and image generation.\nOnly JagX models are shown.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Chat • Code • Vision • Images',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 32),
+          ..._suggestions.map((s) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: InkWell(
+                onTap: () => onSuggestionTap(s),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    s,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -242,19 +276,19 @@ class _MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
         decoration: BoxDecoration(
-          color: isUser ? AppColors.primary.withOpacity(0.15) : AppColors.surfaceElevated,
+          color: isUser ? AppColors.primary.withOpacity(0.12) : AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isUser ? AppColors.primary.withOpacity(0.3) : AppColors.border,
+            color: isUser ? AppColors.primary.withOpacity(0.25) : AppColors.border,
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            SelectableText(
               message.content,
               style: TextStyle(
                 color: AppColors.textPrimary,
@@ -269,7 +303,10 @@ class _MessageBubble extends StatelessWidget {
                 child: Image.network(
                   message.imageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Text('Image failed to load'),
+                  errorBuilder: (_, __, ___) => const Text(
+                    'Image failed to load',
+                    style: TextStyle(color: AppColors.textTertiary),
+                  ),
                 ),
               ),
             ],

@@ -1,14 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/models/jagx_model.dart';
 import '../../../../core/services/ai_service.dart';
+import '../../data/chat_repository.dart';
 import '../../domain/message.dart';
+
+final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  return ChatRepository(Supabase.instance.client);
+});
 
 class ChatState {
   const ChatState({
     this.messages = const [],
     this.selectedModel,
+    this.conversationId,
     this.isLoading = false,
     this.isThinking = false,
     this.thinkingSteps = const [],
@@ -18,6 +25,7 @@ class ChatState {
 
   final List<ChatMessage> messages;
   final JagxModel? selectedModel;
+  final String? conversationId;
   final bool isLoading;
   final bool isThinking;
   final List<String> thinkingSteps;
@@ -27,6 +35,7 @@ class ChatState {
   ChatState copyWith({
     List<ChatMessage>? messages,
     JagxModel? selectedModel,
+    String? conversationId,
     bool? isLoading,
     bool? isThinking,
     List<String>? thinkingSteps,
@@ -37,6 +46,7 @@ class ChatState {
     return ChatState(
       messages: messages ?? this.messages,
       selectedModel: selectedModel ?? this.selectedModel,
+      conversationId: conversationId ?? this.conversationId,
       isLoading: isLoading ?? this.isLoading,
       isThinking: isThinking ?? this.isThinking,
       thinkingSteps: thinkingSteps ?? this.thinkingSteps,
@@ -48,13 +58,36 @@ class ChatState {
 }
 
 class ChatNotifier extends StateNotifier<ChatState> {
-  ChatNotifier(this._ai) : super(ChatState(selectedModel: JagxModels.defaultModel));
+  ChatNotifier(this._ai, this._repo)
+      : super(ChatState(selectedModel: JagxModels.defaultModel));
 
   final AiService _ai;
+  final ChatRepository _repo;
   final _uuid = const Uuid();
 
   void selectModel(JagxModel model) {
     state = state.copyWith(selectedModel: model);
+  }
+
+  Future<void> startNewChat() async {
+    state = ChatState(selectedModel: state.selectedModel);
+  }
+
+  Future<void> loadConversation(String conversationId) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final messages = await _repo.fetchMessages(conversationId);
+      state = state.copyWith(
+        conversationId: conversationId,
+        messages: messages,
+        isLoading: false,
+      );
+    } catch (_) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Could not load conversation',
+      );
+    }
   }
 
   bool _wantsImage(String text) {
@@ -65,6 +98,22 @@ class ChatNotifier extends StateNotifier<ChatState> {
         lower.startsWith('make an image') ||
         lower.contains('generate an image of') ||
         state.selectedModel?.category == JagxModelCategory.image;
+  }
+
+  Future<String> _ensureConversation(String firstMessage) async {
+    if (state.conversationId != null) return state.conversationId!;
+
+    final title = firstMessage.length > 40
+        ? '${firstMessage.substring(0, 40)}…'
+        : firstMessage;
+
+    final conv = await _repo.createConversation(
+      title: title,
+      modelId: state.selectedModel?.id,
+    );
+
+    state = state.copyWith(conversationId: conv.id);
+    return conv.id;
   }
 
   Future<void> sendMessage(String text) async {
@@ -98,7 +147,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
       clearStreaming: true,
     );
 
-    await Future.delayed(const Duration(milliseconds: 450));
+    // Persist user message
+    try {
+      final convId = await _ensureConversation(trimmed);
+      await _repo.saveMessage(conversationId: convId, message: userMessage);
+    } catch (_) {
+      // Continue even if persistence fails
+    }
+
+    await Future.delayed(const Duration(milliseconds: 400));
 
     final history = state.messages
         .map((m) => {
@@ -149,14 +206,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
           isThinking: false,
           thinkingSteps: [],
         );
+
+        if (state.conversationId != null) {
+          await _repo.saveMessage(
+            conversationId: state.conversationId!,
+            message: assistantMessage,
+          );
+        }
         return;
       }
 
       state = state.copyWith(
-        thinkingSteps: [
-          ...state.thinkingSteps,
-          'Generating response',
-        ],
+        thinkingSteps: [...state.thinkingSteps, 'Generating response'],
       );
 
       final buffer = StringBuffer();
@@ -188,6 +249,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
           thinkingSteps: [],
           clearStreaming: true,
         );
+
+        if (state.conversationId != null) {
+          await _repo.saveMessage(
+            conversationId: state.conversationId!,
+            message: assistantMessage,
+          );
+        }
       } else {
         state = state.copyWith(
           isLoading: false,
@@ -215,5 +283,6 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   final ai = ref.watch(aiServiceProvider);
-  return ChatNotifier(ai);
+  final repo = ref.watch(chatRepositoryProvider);
+  return ChatNotifier(ai, repo);
 });

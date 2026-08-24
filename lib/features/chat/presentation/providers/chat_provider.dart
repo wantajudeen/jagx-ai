@@ -10,24 +10,38 @@ class ChatState {
     this.messages = const [],
     this.selectedModel,
     this.isLoading = false,
+    this.isThinking = false,
+    this.thinkingSteps = const [],
+    this.streamingContent,
     this.error,
   });
 
   final List<ChatMessage> messages;
   final JagxModel? selectedModel;
   final bool isLoading;
+  final bool isThinking;
+  final List<String> thinkingSteps;
+  final String? streamingContent;
   final String? error;
 
   ChatState copyWith({
     List<ChatMessage>? messages,
     JagxModel? selectedModel,
     bool? isLoading,
+    bool? isThinking,
+    List<String>? thinkingSteps,
+    String? streamingContent,
     String? error,
+    bool clearStreaming = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
       selectedModel: selectedModel ?? this.selectedModel,
       isLoading: isLoading ?? this.isLoading,
+      isThinking: isThinking ?? this.isThinking,
+      thinkingSteps: thinkingSteps ?? this.thinkingSteps,
+      streamingContent:
+          clearStreaming ? null : (streamingContent ?? this.streamingContent),
       error: error,
     );
   }
@@ -67,8 +81,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(
       messages: [...state.messages, userMessage],
       isLoading: true,
+      isThinking: true,
+      thinkingSteps: ['Understanding your request', 'Selecting the best approach'],
       error: null,
+      clearStreaming: true,
     );
+
+    // Small delay so the thinking UI feels natural
+    await Future.delayed(const Duration(milliseconds: 400));
 
     final history = state.messages
         .map((m) => {
@@ -81,6 +101,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
       final modelId = state.selectedModel?.id ?? JagxModels.defaultModel.id;
 
       if (_wantsImage(trimmed)) {
+        state = state.copyWith(
+          thinkingSteps: [
+            ...state.thinkingSteps,
+            'Preparing image generation',
+            'Creating with Canvas',
+          ],
+        );
+
         final prompt = trimmed
             .replaceFirst(
               RegExp(
@@ -108,29 +136,65 @@ class ChatNotifier extends StateNotifier<ChatState> {
         state = state.copyWith(
           messages: [...state.messages, assistantMessage],
           isLoading: false,
+          isThinking: false,
+          thinkingSteps: [],
         );
         return;
       }
 
-      final reply = await _ai.chat(
+      // Streaming path
+      state = state.copyWith(
+        thinkingSteps: [
+          ...state.thinkingSteps,
+          'Reasoning through the answer',
+          'Generating response',
+        ],
+        isThinking: true,
+      );
+
+      final buffer = StringBuffer();
+      await for (final token in _ai.chatStream(
         modelId: modelId,
         messages: history,
-      );
+      )) {
+        buffer.write(token);
+        state = state.copyWith(
+          isThinking: false,
+          streamingContent: buffer.toString(),
+        );
+      }
 
-      final assistantMessage = ChatMessage(
-        id: _uuid.v4(),
-        role: MessageRole.assistant,
-        content: reply,
-        createdAt: DateTime.now(),
-      );
+      final finalContent = buffer.toString().trim();
+      if (finalContent.isNotEmpty) {
+        final assistantMessage = ChatMessage(
+          id: _uuid.v4(),
+          role: MessageRole.assistant,
+          content: finalContent,
+          createdAt: DateTime.now(),
+        );
 
-      state = state.copyWith(
-        messages: [...state.messages, assistantMessage],
-        isLoading: false,
-      );
+        state = state.copyWith(
+          messages: [...state.messages, assistantMessage],
+          isLoading: false,
+          isThinking: false,
+          thinkingSteps: [],
+          clearStreaming: true,
+        );
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          isThinking: false,
+          thinkingSteps: [],
+          clearStreaming: true,
+          error: 'No response received. Try again.',
+        );
+      }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
+        isThinking: false,
+        thinkingSteps: [],
+        clearStreaming: true,
         error: 'Something went wrong. Please try again.',
       );
     }

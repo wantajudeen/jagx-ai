@@ -30,11 +30,15 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     if (text.trim().isEmpty) return;
     ref.read(chatProvider.notifier).sendMessage(text);
     _controller.clear();
-    Future.delayed(const Duration(milliseconds: 120), () {
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 80), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent + 100,
-          duration: const Duration(milliseconds: 280),
+          _scrollController.position.maxScrollExtent + 120,
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
       }
@@ -45,6 +49,11 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
   Widget build(BuildContext context) {
     final chat = ref.watch(chatProvider);
     final selected = chat.selectedModel ?? JagxModels.defaultModel;
+
+    // Auto scroll while streaming
+    if (chat.streamingContent != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -121,19 +130,19 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
       body: Column(
         children: [
           Expanded(
-            child: chat.messages.isEmpty
+            child: chat.messages.isEmpty && !chat.isLoading
                 ? _EmptyState(onSuggestionTap: _send)
-                : ListView.builder(
+                : ListView(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    itemCount: chat.messages.length + (chat.isLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (chat.isLoading && index == chat.messages.length) {
-                        return const _TypingIndicator();
-                      }
-                      final message = chat.messages[index];
-                      return _MessageBubble(message: message);
-                    },
+                    children: [
+                      ...chat.messages.map((m) => _MessageBubble(message: m)),
+                      if (chat.isThinking && chat.thinkingSteps.isNotEmpty)
+                        _ThinkingBlock(steps: chat.thinkingSteps),
+                      if (chat.streamingContent != null &&
+                          chat.streamingContent!.isNotEmpty)
+                        _StreamingBubble(content: chat.streamingContent!),
+                    ],
                   ),
           ),
           if (chat.error != null)
@@ -193,6 +202,105 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
   }
 }
 
+class _ThinkingBlock extends StatelessWidget {
+  const _ThinkingBlock({required this.steps});
+
+  final List<String> steps;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Thinking',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...steps.map(
+            (step) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, size: 5, color: AppColors.textTertiary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      step,
+                      style: TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StreamingBubble extends StatelessWidget {
+  const _StreamingBubble({required this.content});
+
+  final String content;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.8,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          content,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 15,
+            height: 1.4,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onSuggestionTap});
 
@@ -223,7 +331,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Chat • Code • Vision • Images',
+            'Pulse • Nova • Forge • Lens • Canvas',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -311,33 +419,6 @@ class _MessageBubble extends StatelessWidget {
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TypingIndicator extends StatelessWidget {
-  const _TypingIndicator();
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Text(
-          'JagX is thinking...',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
         ),
       ),
     );

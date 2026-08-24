@@ -38,14 +38,29 @@ jobs:
       - name: Ensure asset folders exist
         run: |
           mkdir -p assets/images assets/icons
-          # Placeholder so Flutter assets don't fail if icon not uploaded yet
           if [ ! -f assets/icons/app_icon.png ]; then
-            # Create a minimal 1x1 PNG placeholder (black pixel)
             printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82' > assets/icons/app_icon.png
           fi
 
       - name: Generate platform folders
         run: flutter create . --project-name jagx_ai --org com.jagx.ai --platforms=android
+
+      - name: Fix Android SDK versions
+        run: |
+          # Force modern compileSdk / targetSdk so plugins like printing work
+          if [ -f android/app/build.gradle ]; then
+            sed -i 's/compileSdk = .*/compileSdk = 36/' android/app/build.gradle || true
+            sed -i 's/compileSdkVersion .*/compileSdkVersion 36/' android/app/build.gradle || true
+            sed -i 's/targetSdk = .*/targetSdk = 36/' android/app/build.gradle || true
+            sed -i 's/targetSdkVersion .*/targetSdkVersion 36/' android/app/build.gradle || true
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i 's/compileSdk = .*/compileSdk = 36/' android/app/build.gradle.kts || true
+            sed -i 's/targetSdk = .*/targetSdk = 36/' android/app/build.gradle.kts || true
+          fi
+          # Also bump in local.properties / gradle if needed
+          echo "android.defaults.buildfeatures.buildconfig=true" >> android/gradle.properties || true
+          echo "android.nonTransitiveRClass=false" >> android/gradle.properties || true
 
       - name: Get dependencies
         run: flutter pub get

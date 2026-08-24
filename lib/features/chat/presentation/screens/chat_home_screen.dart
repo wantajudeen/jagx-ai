@@ -50,7 +50,6 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     final chat = ref.watch(chatProvider);
     final selected = chat.selectedModel ?? JagxModels.defaultModel;
 
-    // Auto scroll while streaming
     if (chat.streamingContent != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
@@ -307,11 +306,11 @@ class _EmptyState extends StatelessWidget {
   final void Function(String) onSuggestionTap;
 
   static const _suggestions = [
-    'Explain quantum computing simply',
+    'What is happening on X right now?',
     'Write a clean Flutter Riverpod example',
     'Generate image: futuristic Lagos skyline at night',
+    'Search the latest AI news',
     'Help me design a product roadmap',
-    'Debug this error: setState() called after dispose',
   ];
 
   @override
@@ -331,9 +330,9 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Pulse • Nova • Forge • Lens • Canvas',
+            'Pulse • Nova • Forge • Aether • Ember • Oracle',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               color: AppColors.textSecondary,
             ),
           ),

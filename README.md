@@ -2,53 +2,45 @@
 
 Native Android & iOS intelligence console built by **JagX & JRILICENSE**.
 
-Capable, dark-first AI with email OTP auth, streaming chat, visible reasoning steps, and distinctive model names. Frontend only shows JagX models.
+## Models (fully unique names)
 
-## Models (unique names)
+| Name       | What it does                                      |
+|------------|---------------------------------------------------|
+| **Pulse**  | Fast everyday intelligence                        |
+| **Nova**   | Deep reasoning & complex thinking                 |
+| **Forge**  | Code, systems & technical mastery                  |
+| **Aether** | Sees images, documents & the world                |
+| **Ember**  | Creates stunning images                           |
+| **Oracle** | Does everything — web search, reason, code, create|
 
-| Name     | Purpose                          |
-|----------|----------------------------------|
-| **Pulse**   | Fast everyday intelligence      |
-| **Nova**    | Deep reasoning & complex work   |
-| **Forge**   | Code, systems & technical work  |
-| **Lens**    | Sees and understands images     |
-| **Canvas**  | Creates high quality images     |
+**Oracle** automatically searches the internet when needed.
 
-## What it can do
+## Capabilities
 
 - Visible thinking / reasoning steps
 - Streaming responses
-- Deep reasoning & clear explanations
+- Web search (Google-level info via Oracle)
 - Code writing & debugging
 - Image generation
 - Multi-turn conversation
 
-## Current Status
+## Status
 
-- [x] Full project scaffold + clean architecture
-- [x] Dark JagX design system
-- [x] Supabase email + 6-digit OTP → set password
-- [x] Unique model names (Pulse, Nova, Forge, Lens, Canvas)
-- [x] Silent upstream routing
-- [x] Streaming chat
-- [x] Reasoning / thinking steps UI
-- [x] Image generation
-- [x] Suggested prompts
-- [ ] Persistent chat history (Supabase)
+- [x] Unique model names
+- [x] Oracle (all-rounder + web search)
+- [x] Streaming + reasoning UI
+- [x] Email OTP auth
+- [ ] Persistent chat history
 - [ ] Google / Apple Sign-In (Coming Soon)
 
-## Getting Started
+## Run
 
 ```bash
 git clone https://github.com/wantajudeen/jagx-ai.git
 cd jagx-ai
 cp .env.example .env
-# Add SUPABASE_ANON_KEY + OPENROUTER_API_KEY
 flutter pub get
 flutter run
 ```
 
-## Brand
-
-Dark-first • Teal accents • Clean typography  
 *Build quietly. Let the work be the noise.*

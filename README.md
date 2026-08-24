@@ -2,25 +2,26 @@
 
 Native Android & iOS intelligence console built by **JagX & JRILICENSE**.
 
-Fast, dark-first experience with email OTP auth, chat, and image generation. Frontend only shows **JagX models**.
+Fast, dark-first experience with email OTP auth, real chat, model selector, and image generation. Frontend only shows **JagX models**.
 
 ## Current Status
 
-- [x] Project scaffold
+- [x] Project scaffold + architecture
 - [x] Dark JagX design system (teal accents)
 - [x] Supabase Auth (email + 6-digit OTP → set password)
-- [x] Splash + Auth flow + Chat home shell
-- [ ] Chat messaging + streaming
-- [ ] Image generation
-- [ ] Model router (JagX models only in UI)
+- [x] Splash + full auth flow
+- [x] Chat UI with message bubbles
+- [x] JagX model selector (Core, Pro, Code, Vision, Image)
+- [x] Silent model routing (OpenRouter / others hidden from user)
+- [x] Image generation support
+- [ ] Streaming responses
+- [ ] Conversation history persistence
 - [ ] Google / Apple Sign-In (Coming Soon)
 
 ## Stack
 
-- Flutter
+- Flutter + Riverpod + go_router
 - Supabase Auth
-- Riverpod
-- go_router
 - Feature-first architecture
 
 ## Getting Started
@@ -29,7 +30,7 @@ Fast, dark-first experience with email OTP auth, chat, and image generation. Fro
 git clone https://github.com/wantajudeen/jagx-ai.git
 cd jagx-ai
 cp .env.example .env
-# Fill SUPABASE_ANON_KEY and other keys
+# Fill SUPABASE_ANON_KEY + API keys
 flutter pub get
 flutter run
 ```
@@ -42,7 +43,15 @@ flutter run
 4. Set password
 5. Land in chat
 
-Google & Apple Sign-In are marked Coming Soon.
+## Models (shown to users)
+
+- JagX Core
+- JagX Pro
+- JagX Code
+- JagX Vision
+- JagX Image
+
+Internal routing is completely hidden.
 
 ## Brand
 

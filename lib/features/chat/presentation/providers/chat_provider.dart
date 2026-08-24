@@ -43,6 +43,16 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(selectedModel: model);
   }
 
+  bool _wantsImage(String text) {
+    final lower = text.toLowerCase();
+    return lower.startsWith('generate image') ||
+        lower.startsWith('draw ') ||
+        lower.startsWith('create an image') ||
+        lower.startsWith('make an image') ||
+        lower.contains('generate an image of') ||
+        state.selectedModel?.category == JagxModelCategory.image;
+  }
+
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || state.isLoading) return;
@@ -70,20 +80,27 @@ class ChatNotifier extends StateNotifier<ChatState> {
     try {
       final modelId = state.selectedModel?.id ?? JagxModels.defaultModel.id;
 
-      // Simple image generation trigger
-      if (trimmed.toLowerCase().startsWith('generate image:') ||
-          trimmed.toLowerCase().startsWith('draw:') ||
-          state.selectedModel?.category == JagxModelCategory.image) {
+      if (_wantsImage(trimmed)) {
         final prompt = trimmed
-            .replaceFirst(RegExp(r'^(generate image:|draw:)', caseSensitive: false), '')
+            .replaceFirst(
+              RegExp(
+                r'^(generate image[:\s]*|draw[:\s]*|create an image[:\s]*|make an image[:\s]*)',
+                caseSensitive: false,
+              ),
+              '',
+            )
             .trim();
 
-        final imageUrl = await _ai.generateImage(prompt: prompt);
+        final imageUrl = await _ai.generateImage(
+          prompt: prompt.isEmpty ? trimmed : prompt,
+        );
 
         final assistantMessage = ChatMessage(
           id: _uuid.v4(),
           role: MessageRole.assistant,
-          content: imageUrl != null ? 'Here is your image.' : 'Could not generate image.',
+          content: imageUrl != null
+              ? 'Here’s the image I created for you.'
+              : 'I couldn’t generate the image right now. Please try again.',
           imageUrl: imageUrl,
           createdAt: DateTime.now(),
         );
@@ -114,7 +131,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Something went wrong. Try again.',
+        error: 'Something went wrong. Please try again.',
       );
     }
   }

@@ -4,8 +4,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/models/jagx_model.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/pdf_export.dart';
 import '../../domain/message.dart';
 import '../providers/chat_provider.dart';
+import '../providers/conversations_provider.dart';
 
 class ChatHomeScreen extends ConsumerStatefulWidget {
   const ChatHomeScreen({super.key});
@@ -31,6 +33,10 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     ref.read(chatProvider.notifier).sendMessage(text);
     _controller.clear();
     _scrollToBottom();
+    // Refresh conversation list after first message
+    Future.delayed(const Duration(milliseconds: 800), () {
+      ref.read(conversationsProvider.notifier).refresh();
+    });
   }
 
   void _scrollToBottom() {
@@ -45,6 +51,28 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     });
   }
 
+  Future<void> _exportPdf() async {
+    final chat = ref.read(chatProvider);
+    if (chat.messages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing to export yet')),
+      );
+      return;
+    }
+
+    final buffer = StringBuffer();
+    for (final m in chat.messages) {
+      buffer.writeln(m.isUser ? 'You:' : 'JagX AI:');
+      buffer.writeln(m.content);
+      buffer.writeln();
+    }
+
+    await PdfExport.export(
+      title: 'JagX AI Conversation',
+      content: buffer.toString(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final chat = ref.watch(chatProvider);
@@ -55,6 +83,7 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
     }
 
     return Scaffold(
+      drawer: const _ConversationsDrawer(),
       appBar: AppBar(
         title: Row(
           children: [
@@ -78,6 +107,11 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Export as PDF',
+            icon: const Icon(Icons.picture_as_pdf_outlined, size: 22),
+            onPressed: _exportPdf,
+          ),
           PopupMenuButton<JagxModel>(
             initialValue: selected,
             onSelected: (m) => ref.read(chatProvider.notifier).selectModel(m),
@@ -102,7 +136,7 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
               }).toList();
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
                   Text(
@@ -198,6 +232,122 @@ class _ChatHomeScreenState extends ConsumerState<ChatHomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class _ConversationsDrawer extends ConsumerWidget {
+  const _ConversationsDrawer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final conversations = ref.watch(conversationsProvider);
+
+    return Drawer(
+      backgroundColor: AppColors.surface,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Chats',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'New chat',
+                    icon: Icon(Icons.add, color: AppColors.primary),
+                    onPressed: () {
+                      ref.read(chatProvider.notifier).startNewChat();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: conversations.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, __) => Center(
+                  child: Text(
+                    'Could not load chats',
+                    style: TextStyle(color: AppColors.textTertiary),
+                  ),
+                ),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No conversations yet',
+                        style: TextStyle(color: AppColors.textTertiary),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final conv = list[index];
+                      return ListTile(
+                        title: Text(
+                          conv.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: conv.updatedAt != null
+                            ? Text(
+                                _formatDate(conv.updatedAt!),
+                                style: TextStyle(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 12,
+                                ),
+                              )
+                            : null,
+                        onTap: () {
+                          ref.read(chatProvider.notifier).loadConversation(conv.id);
+                          Navigator.of(context).pop();
+                        },
+                        trailing: IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppColors.textTertiary,
+                          ),
+                          onPressed: () {
+                            ref.read(conversationsProvider.notifier).delete(conv.id);
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
 

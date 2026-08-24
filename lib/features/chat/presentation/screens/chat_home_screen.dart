@@ -306,11 +306,11 @@ class _EmptyState extends StatelessWidget {
   final void Function(String) onSuggestionTap;
 
   static const _suggestions = [
-    'What is happening on X right now?',
-    'Write a clean Flutter Riverpod example',
-    'Generate image: futuristic Lagos skyline at night',
-    'Search the latest AI news',
-    'Help me design a product roadmap',
+    'Draft a modern CV for a Flutter developer',
+    'Design a product package for a Nigerian fintech app',
+    'Generate image: premium dark UI dashboard',
+    'Write a professional project proposal I can personalize',
+    'Search the latest AI tools and summarize them',
   ];
 
   @override

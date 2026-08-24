@@ -1,8 +1,9 @@
 enum JagxModelCategory {
   chat,
+  code,
   vision,
   image,
-  code,
+  agent,
 }
 
 class JagxModel {
@@ -21,8 +22,7 @@ class JagxModel {
   final bool isDefault;
 }
 
-/// Distinctive JagX model names shown only to the user.
-/// Internal routing stays completely hidden.
+/// Fully unique JagX model names. Never generic.
 class JagxModels {
   static const List<JagxModel> all = [
     JagxModel(
@@ -35,7 +35,7 @@ class JagxModels {
     JagxModel(
       id: 'jagx-nova',
       name: 'Nova',
-      description: 'Deep reasoning & complex work',
+      description: 'Deep reasoning & complex thinking',
       category: JagxModelCategory.chat,
     ),
     JagxModel(
@@ -45,16 +45,22 @@ class JagxModels {
       category: JagxModelCategory.code,
     ),
     JagxModel(
-      id: 'jagx-lens',
-      name: 'Lens',
-      description: 'Sees and understands images',
+      id: 'jagx-aether',
+      name: 'Aether',
+      description: 'Sees images, documents & the world',
       category: JagxModelCategory.vision,
     ),
     JagxModel(
-      id: 'jagx-canvas',
-      name: 'Canvas',
-      description: 'Creates high quality images',
+      id: 'jagx-ember',
+      name: 'Ember',
+      description: 'Creates stunning images',
       category: JagxModelCategory.image,
+    ),
+    JagxModel(
+      id: 'jagx-oracle',
+      name: 'Oracle',
+      description: 'Does everything — search, reason, code, create',
+      category: JagxModelCategory.agent,
     ),
   ];
 

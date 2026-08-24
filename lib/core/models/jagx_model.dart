@@ -21,39 +21,39 @@ class JagxModel {
   final bool isDefault;
 }
 
-/// Only these names are ever shown to the user.
-/// Internal routing to OpenRouter / Nvidia / etc. happens in the service layer.
+/// Distinctive JagX model names shown only to the user.
+/// Internal routing stays completely hidden.
 class JagxModels {
   static const List<JagxModel> all = [
     JagxModel(
-      id: 'jagx-core',
-      name: 'JagX Core',
-      description: 'Fast general intelligence',
+      id: 'jagx-pulse',
+      name: 'Pulse',
+      description: 'Fast everyday intelligence',
       category: JagxModelCategory.chat,
       isDefault: true,
     ),
     JagxModel(
-      id: 'jagx-pro',
-      name: 'JagX Pro',
-      description: 'Deep reasoning & complex tasks',
+      id: 'jagx-nova',
+      name: 'Nova',
+      description: 'Deep reasoning & complex work',
       category: JagxModelCategory.chat,
     ),
     JagxModel(
-      id: 'jagx-code',
-      name: 'JagX Code',
-      description: 'Specialized for code & technical work',
+      id: 'jagx-forge',
+      name: 'Forge',
+      description: 'Code, systems & technical mastery',
       category: JagxModelCategory.code,
     ),
     JagxModel(
-      id: 'jagx-vision',
-      name: 'JagX Vision',
-      description: 'Understands images and documents',
+      id: 'jagx-lens',
+      name: 'Lens',
+      description: 'Sees and understands images',
       category: JagxModelCategory.vision,
     ),
     JagxModel(
-      id: 'jagx-image',
-      name: 'JagX Image',
-      description: 'Generate high quality images',
+      id: 'jagx-canvas',
+      name: 'Canvas',
+      description: 'Creates high quality images',
       category: JagxModelCategory.image,
     ),
   ];

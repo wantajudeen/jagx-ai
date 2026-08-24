@@ -26,17 +26,16 @@ Core identity:
 - Always identify yourself only as JagX AI by JagX & JRILICENSE when asked who you are.
 - Be maximally helpful, truthful, and clear.
 
-Capabilities:
-- Deep reasoning and step-by-step thinking when needed
-- Writing and explaining code in any language
-- Analyzing images and documents
-- Generating detailed, high-quality images when asked
-- Helping with product, design, business, and technical decisions
+You can:
+- Search the internet and reason over current information
+- Write and debug code in any language
+- Analyze images and documents
+- Generate high quality images
+- Help with product, design, business, and technical decisions
+- Answer questions about the world, social media trends, news, and more
 
-Style:
-- Natural, confident, and human
-- Prefer clear structure when it helps
-- Match the user's language and energy
+When you need fresh information, say you are checking current sources and then give the best answer you can.
+Style: natural, confident, structured when helpful.
 ''';
 
   String _resolveUpstream(String jagxModelId) {
@@ -47,24 +46,86 @@ Style:
         return 'anthropic/claude-3.5-sonnet';
       case 'jagx-forge':
         return 'deepseek/deepseek-coder';
-      case 'jagx-lens':
+      case 'jagx-aether':
         return 'openai/gpt-4o';
-      case 'jagx-canvas':
+      case 'jagx-ember':
         return 'black-forest-labs/flux-1.1-pro';
+      case 'jagx-oracle':
+        // All-rounder – strongest general model + tools
+        return 'anthropic/claude-3.5-sonnet';
       default:
         return 'openai/gpt-4o-mini';
     }
   }
 
-  /// Non-streaming chat (fallback)
+  /// Simple web search using DuckDuckGo instant answer / HTML (no key needed)
+  Future<String> webSearch(String query) async {
+    try {
+      final response = await _dio.get(
+        'https://api.duckduckgo.com/',
+        queryParameters: {
+          'q': query,
+          'format': 'json',
+          'no_html': 1,
+          'skip_disambig': 1,
+        },
+      );
+
+      final data = response.data;
+      final buffer = StringBuffer();
+
+      if (data['AbstractText'] != null && data['AbstractText'].toString().isNotEmpty) {
+        buffer.writeln(data['AbstractText']);
+      }
+      if (data['Answer'] != null && data['Answer'].toString().isNotEmpty) {
+        buffer.writeln(data['Answer']);
+      }
+
+      final related = data['RelatedTopics'] as List? ?? [];
+      for (final item in related.take(4)) {
+        if (item is Map && item['Text'] != null) {
+          buffer.writeln('• ${item['Text']}');
+        }
+      }
+
+      final result = buffer.toString().trim();
+      return result.isEmpty ? 'No clear results found for "$query".' : result;
+    } catch (_) {
+      return 'Search is temporarily unavailable.';
+    }
+  }
+
   Future<String> chat({
     required String modelId,
     required List<Map<String, String>> messages,
+    bool enableSearch = false,
   }) async {
     final upstream = _resolveUpstream(modelId);
+    var workingMessages = List<Map<String, String>>.from(messages);
+
+    // If Oracle or search is requested, try to enrich with web results
+    if (enableSearch || modelId == 'jagx-oracle') {
+      final lastUser = workingMessages.lastWhere(
+        (m) => m['role'] == 'user',
+        orElse: () => {},
+      );
+      final query = lastUser['content'] ?? '';
+      if (query.length > 8) {
+        final searchResult = await webSearch(query);
+        workingMessages = [
+          ...workingMessages,
+          {
+            'role': 'system',
+            'content':
+                'Current web information for context:\n$searchResult\n\nUse this if relevant. Do not mention the search source.',
+          },
+        ];
+      }
+    }
+
     final fullMessages = [
       {'role': 'system', 'content': _systemPrompt},
-      ...messages,
+      ...workingMessages,
     ];
 
     if (Env.openRouterApiKey.isEmpty) {
@@ -97,78 +158,30 @@ Style:
     }
   }
 
-  /// Streaming chat – yields tokens as they arrive
   Stream<String> chatStream({
     required String modelId,
     required List<Map<String, String>> messages,
+    bool enableSearch = false,
   }) async* {
-    final upstream = _resolveUpstream(modelId);
-    final fullMessages = [
-      {'role': 'system', 'content': _systemPrompt},
-      ...messages,
-    ];
+    // For streaming we still do a non-stream search first if needed, then stream the answer
+    final reply = await chat(
+      modelId: modelId,
+      messages: messages,
+      enableSearch: enableSearch || modelId == 'jagx-oracle',
+    );
 
-    if (Env.openRouterApiKey.isEmpty) {
-      yield 'JagX AI needs API keys configured in .env to respond.';
-      return;
-    }
-
-    try {
-      final response = await _dio.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer ${Env.openRouterApiKey}',
-            'HTTP-Referer': 'https://jagx.ai',
-            'X-Title': 'JagX AI',
-            'Content-Type': 'application/json',
-          },
-          responseType: ResponseType.stream,
-        ),
-        data: {
-          'model': upstream,
-          'messages': fullMessages,
-          'temperature': 0.7,
-          'max_tokens': 4096,
-          'stream': true,
-        },
-      );
-
-      final stream = response.data.stream as Stream<List<int>>;
-      final buffer = StringBuffer();
-
-      await for (final chunk in stream) {
-        final text = String.fromCharCodes(chunk);
-        // Very simple SSE parsing for OpenRouter/OpenAI style
-        for (final line in text.split('\n')) {
-          if (line.startsWith('data: ')) {
-            final data = line.substring(6).trim();
-            if (data == '[DONE]') return;
-            try {
-              // Minimal extraction of delta content
-              if (data.contains('"content":')) {
-                final start = data.indexOf('"content":"') + 11;
-                final end = data.indexOf('"', start);
-                if (start > 10 && end > start) {
-                  final token = data.substring(start, end)
-                      .replaceAll('\\n', '\n')
-                      .replaceAll('\\"', '"');
-                  buffer.write(token);
-                  yield token;
-                }
-              }
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (_) {
-      yield 'JagX AI is temporarily unavailable. Please try again.';
+    // Simulate streaming for now (real token streaming can be improved later)
+    const chunkSize = 12;
+    for (var i = 0; i < reply.length; i += chunkSize) {
+      final end = (i + chunkSize < reply.length) ? i + chunkSize : reply.length;
+      yield reply.substring(i, end);
+      await Future.delayed(const Duration(milliseconds: 18));
     }
   }
 
   Future<String?> generateImage({
     required String prompt,
-    String modelId = 'jagx-canvas',
+    String modelId = 'jagx-ember',
   }) async {
     if (Env.openRouterApiKey.isEmpty) return null;
 

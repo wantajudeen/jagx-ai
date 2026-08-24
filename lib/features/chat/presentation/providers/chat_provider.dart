@@ -78,17 +78,27 @@ class ChatNotifier extends StateNotifier<ChatState> {
       createdAt: DateTime.now(),
     );
 
+    final isOracle = state.selectedModel?.id == 'jagx-oracle';
+
     state = state.copyWith(
       messages: [...state.messages, userMessage],
       isLoading: true,
       isThinking: true,
-      thinkingSteps: ['Understanding your request', 'Selecting the best approach'],
+      thinkingSteps: isOracle
+          ? [
+              'Understanding your request',
+              'Searching the web',
+              'Reasoning with current information',
+            ]
+          : [
+              'Understanding your request',
+              'Selecting the best approach',
+            ],
       error: null,
       clearStreaming: true,
     );
 
-    // Small delay so the thinking UI feels natural
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 450));
 
     final history = state.messages
         .map((m) => {
@@ -105,7 +115,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           thinkingSteps: [
             ...state.thinkingSteps,
             'Preparing image generation',
-            'Creating with Canvas',
+            'Creating with Ember',
           ],
         );
 
@@ -142,20 +152,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
         return;
       }
 
-      // Streaming path
       state = state.copyWith(
         thinkingSteps: [
           ...state.thinkingSteps,
-          'Reasoning through the answer',
           'Generating response',
         ],
-        isThinking: true,
       );
 
       final buffer = StringBuffer();
       await for (final token in _ai.chatStream(
         modelId: modelId,
         messages: history,
+        enableSearch: isOracle,
       )) {
         buffer.write(token);
         state = state.copyWith(
